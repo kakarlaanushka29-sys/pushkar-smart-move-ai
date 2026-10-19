@@ -31,3 +31,4 @@ Terminal 2:
 
 Open http://localhost:5173
 API docs: http://127.0.0.1:8000/docs
+API docs: http://127.0.0.1:8000/docs
