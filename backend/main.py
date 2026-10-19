@@ -193,3 +193,35 @@ def best_route():
         return {"message": "All routes closed"}
     best = min(open_roads, key=lambda r: (r["time_min"] + rank[r["level"]] * 5))
     return {"simulated": True, "recommended": best}
+@app.get("/journey")
+def journey():
+    # 1. Best parking (not nearly full)
+    options = [add_status(p) for p in parking if add_status(p)["status"] != "FULL_RISK"]
+    if not options:
+        return {"message": "All parking nearly full. Please wait or ask staff."}
+    best_parking = max(options, key=lambda x: x["available"])
+
+    # 2. Shuttle from that parking
+    shuttle = None
+    for s in shuttle_routes:
+        if s["name"].startswith(best_parking["name"]) and s["status"] != "Disrupted":
+            shuttle = shuttle_view(s)
+            break
+    if shuttle is None:
+        return {"message": "No shuttle available from recommended parking.",
+                "parking": best_parking}
+
+    # 3. Best road to parking area (simulated)
+    rank = {"LOW": 0, "MODERATE": 1, "HIGH": 2}
+    open_roads = [r for r in roads if not r["closed"]]
+    road = min(open_roads, key=lambda r: r["time_min"] + rank[r["level"]] * 5) if open_roads else None
+
+    wait_min = shuttle["interval_min"] // 2 if shuttle["demand"] != "HIGH" else shuttle["interval_min"]
+    return {
+        "simulated": True,
+        "road": road,
+        "parking": best_parking,
+        "shuttle": shuttle,
+        "est_wait_min": wait_min,
+        "ghat": "Ghat A",
+    }

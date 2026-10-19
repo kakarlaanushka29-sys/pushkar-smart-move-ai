@@ -14,6 +14,8 @@ const SHUTTLE_STATUSES = ["Running", "Delayed", "Disrupted"];
 const T = {
   en: {
     title: "Pushkar Smart Move AI", pilgrim: "Pilgrim View", sos: "SOS", admin: "Admin View",
+    journey: "Journey Plan", step1: "Drive via", step2: "Park at", step3: "Take shuttle", step4: "Walk to",
+    est: "Estimated shuttle wait", noJourney: "No journey available right now.",
     traffic: "Traffic (simulated data)", closed: "CLOSED", min: "min", trafficWord: "traffic",
     recRoute: "Recommended route", parkingStatus: "Parking Status", parking: "Parking", ghat: "Ghat",
     available: "Available", full: "full", recommended: "Recommended", spacesFree: "spaces free",
@@ -40,6 +42,8 @@ const T = {
   },
   te: {
     title: "పుష్కర్ స్మార్ట్ మూవ్ AI", pilgrim: "యాత్రికుల వీక్షణ", sos: "SOS", admin: "అడ్మిన్ వీక్షణ",
+    journey: "ప్రయాణ ప్రణాళిక", step1: "ఈ మార్గంలో వెళ్లండి", step2: "ఇక్కడ పార్క్ చేయండి", step3: "షటిల్ ఎక్కండి", step4: "నడిచి వెళ్లండి",
+    est: "షటిల్ కోసం అంచనా వేచి ఉండే సమయం", noJourney: "ప్రస్తుతం ప్రయాణ ప్రణాళిక అందుబాటులో లేదు.",
     traffic: "ట్రాఫిక్ (సిమ్యులేటెడ్ డేటా)", closed: "మూసివేయబడింది", min: "నిమిషాలు", trafficWord: "ట్రాఫిక్",
     recRoute: "సిఫార్సు చేసిన మార్గం", parkingStatus: "పార్కింగ్ స్థితి", parking: "పార్కింగ్", ghat: "ఘాట్",
     available: "ఖాళీ", full: "నిండింది", recommended: "సిఫార్సు", spacesFree: "ఖాళీ స్థలాలు",
@@ -66,6 +70,8 @@ const T = {
   },
   hi: {
     title: "पुष्कर स्मार्ट मूव AI", pilgrim: "यात्री दृश्य", sos: "SOS", admin: "एडमिन दृश्य",
+    journey: "यात्रा योजना", step1: "इस मार्ग से जाएं", step2: "यहां पार्क करें", step3: "शटल लें", step4: "पैदल जाएं",
+    est: "शटल का अनुमानित इंतजार", noJourney: "अभी कोई यात्रा योजना उपलब्ध नहीं है।",
     traffic: "ट्रैफिक (सिमुलेटेड डेटा)", closed: "बंद", min: "मिनट", trafficWord: "ट्रैफिक",
     recRoute: "सुझाया गया मार्ग", parkingStatus: "पार्किंग स्थिति", parking: "पार्किंग", ghat: "घाट",
     available: "उपलब्ध", full: "भरा", recommended: "सुझाव", spacesFree: "स्थान खाली",
@@ -107,12 +113,41 @@ function shuttleNote(t, s) {
   return t.enough;
 }
 
-function Pilgrim({ t, parking, best, shuttles, traffic, route }) {
+function Pilgrim({ t, parking, best, shuttles, traffic, route, journey }) {
   return (
     <>
+      <h2>🧭 {t.journey}</h2>
+      {journey && journey.parking && journey.shuttle ? (
+        <div style={{ border: "3px solid #2563eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
+          {journey.road && (
+            <p>
+              1️⃣ {t.step1}: <b>{t.roads[journey.road.id] || journey.road.name}</b> (~{journey.road.time_min} {t.min})
+            </p>
+          )}
+          <p>
+            2️⃣ {t.step2}: <b>{tr(t, journey.parking.name)}</b> ({journey.parking.available} {t.spacesFree})
+          </p>
+          <p>
+            3️⃣ {t.step3}: <b>{tr(t, journey.shuttle.name)}</b>
+          </p>
+          <p>
+            ⏱️ {t.est}: ~{journey.est_wait_min} {t.min}
+          </p>
+          <p>
+            4️⃣ {t.step4}: <b>{tr(t, journey.ghat)}</b>
+          </p>
+          <small>(simulated data)</small>
+        </div>
+      ) : (
+        <p>{t.noJourney}</p>
+      )}
+
       <h2>🚦 {t.traffic}</h2>
       {traffic.map((r) => (
-        <div key={r.id} style={{ border: `3px solid ${r.closed ? "#6b7280" : tcolor[r.level]}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+        <div
+          key={r.id}
+          style={{ border: `3px solid ${r.closed ? "#6b7280" : tcolor[r.level]}`, borderRadius: 8, padding: 12, marginBottom: 12 }}
+        >
           <b>{t.roads[r.id] || r.name}</b>
           <p>{r.closed ? `🚧 ${t.closed}` : `${t.level[r.level]} ${t.trafficWord} | ~${r.time_min} ${t.min}`}</p>
         </div>
@@ -127,7 +162,9 @@ function Pilgrim({ t, parking, best, shuttles, traffic, route }) {
       {parking.map((p) => (
         <div key={p.id} style={{ border: `3px solid ${color[p.status]}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <h3>{tr(t, p.name)}</h3>
-          <p>{t.available}: {p.available} / {p.capacity} ({p.percent}% {t.full})</p>
+          <p>
+            {t.available}: {p.available} / {p.capacity} ({p.percent}% {t.full})
+          </p>
           <b style={{ color: color[p.status] }}>{t.parkStatus[p.status]}</b>
         </div>
       ))}
@@ -144,8 +181,12 @@ function Pilgrim({ t, parking, best, shuttles, traffic, route }) {
       {shuttles.map((s) => (
         <div key={s.id} style={{ border: "1px solid #999", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <h3>{tr(t, s.name)}</h3>
-          <p>{t.status}: <b>{t.shStatus[s.status]}</b> | {t.every} {s.interval_min} {t.min} | {s.running} {t.running}</p>
-          <p>{t.waiting}: {s.waiting} | {t.demand}: <b style={{ color: dcolor[s.demand] }}>{t.demandL[s.demand]}</b></p>
+          <p>
+            {t.status}: <b>{t.shStatus[s.status]}</b> | {t.every} {s.interval_min} {t.min} | {s.running} {t.running}
+          </p>
+          <p>
+            {t.waiting}: {s.waiting} | {t.demand}: <b style={{ color: dcolor[s.demand] }}>{t.demandL[s.demand]}</b>
+          </p>
         </div>
       ))}
     </>
@@ -164,7 +205,11 @@ function SOS({ t }) {
   useEffect(() => {
     if (!myId) return;
     const timer = setInterval(async () => {
-      try { setMyReport(await fetch(`${API}/sos/${myId}`).then((x) => x.json())); } catch { /* ignore */ }
+      try {
+        setMyReport(await fetch(`${API}/sos/${myId}`).then((x) => x.json()));
+      } catch {
+        /* ignore */
+      }
     }, 3000);
     return () => clearInterval(timer);
   }, [myId]);
@@ -172,7 +217,11 @@ function SOS({ t }) {
   const getGPS = () => {
     if (!navigator.geolocation) return setMsg(t.gpsNA);
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setLat(pos.coords.latitude); setLng(pos.coords.longitude); setMsg("📍 " + t.gpsOk); },
+      (pos) => {
+        setLat(pos.coords.latitude);
+        setLng(pos.coords.longitude);
+        setMsg("📍 " + t.gpsOk);
+      },
       () => setMsg(t.gpsDenied)
     );
   };
@@ -197,23 +246,41 @@ function SOS({ t }) {
   return (
     <>
       <h2>🆘 {t.emergencyHelp}</h2>
-      <p style={{ background: "#fee2e2", padding: 8, borderRadius: 6 }}><b>{t.call112}</b></p>
+      <p style={{ background: "#fee2e2", padding: 8, borderRadius: 6 }}>
+        <b>{t.call112}</b>
+      </p>
       <label>{t.emergencyType}</label>
       <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 10 }}>
-        {CATEGORIES.map((c) => <option key={c} value={c}>{t.cat[c]}</option>)}
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {t.cat[c]}
+          </option>
+        ))}
       </select>
       <label>{t.location}</label>
       <select value={location} onChange={(e) => setLocation(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 10 }}>
-        {LOCATIONS.map((c) => <option key={c} value={c}>{t.loc[c]}</option>)}
+        {LOCATIONS.map((c) => (
+          <option key={c} value={c}>
+            {t.loc[c]}
+          </option>
+        ))}
       </select>
-      <button onClick={getGPS} style={{ marginBottom: 10 }}>📍 {t.useGps}</button>
+      <button onClick={getGPS} style={{ marginBottom: 10 }}>
+        📍 {t.useGps}
+      </button>
       {msg && <p>{msg}</p>}
-      <button onClick={send} style={{ width: "100%", padding: 20, fontSize: 24, background: "#dc2626", color: "white", border: "none", borderRadius: 10, fontWeight: "bold" }}>
+      <button
+        onClick={send}
+        style={{ width: "100%", padding: 20, fontSize: 24, background: "#dc2626", color: "white", border: "none", borderRadius: 10, fontWeight: "bold" }}
+      >
         🆘 {t.sendSos}
       </button>
       {myReport && (
         <div style={{ marginTop: 16, border: "2px solid #dc2626", borderRadius: 8, padding: 12 }}>
-          <b>{t.report} #{myReport.id} {t.sent}</b> ({t.cat[myReport.category] || myReport.category}, {t.loc[myReport.location] || myReport.location})
+          <b>
+            {t.report} #{myReport.id} {t.sent}
+          </b>{" "}
+          ({t.cat[myReport.category] || myReport.category}, {t.loc[myReport.location] || myReport.location})
           <div style={{ marginTop: 8 }}>
             {STATUSES.map((s, i) => (
               <div key={s} style={{ opacity: i <= STATUSES.indexOf(myReport.status) ? 1 : 0.3 }}>
@@ -231,7 +298,11 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
   const [sos, setSos] = useState([]);
 
   const loadSos = async () => {
-    try { setSos(await fetch(`${API}/sos`).then((r) => r.json())); } catch { /* ignore */ }
+    try {
+      setSos(await fetch(`${API}/sos`).then((r) => r.json()));
+    } catch {
+      /* ignore */
+    }
   };
 
   useEffect(() => {
@@ -240,10 +311,22 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
     return () => clearInterval(timer);
   }, []);
 
-  const updateParking = async (id, occupied) => { await put(`/parking/${id}`, { occupied: Number(occupied) }); reload(); };
-  const updateShuttle = async (id, body) => { await put(`/shuttle/${id}`, body); reload(); };
-  const updateRoad = async (id, body) => { await put(`/traffic/${id}`, body); reload(); };
-  const setStatus = async (id, status) => { await put(`/sos/${id}/status`, { status }); loadSos(); };
+  const updateParking = async (id, occupied) => {
+    await put(`/parking/${id}`, { occupied: Number(occupied) });
+    reload();
+  };
+  const updateShuttle = async (id, body) => {
+    await put(`/shuttle/${id}`, body);
+    reload();
+  };
+  const updateRoad = async (id, body) => {
+    await put(`/traffic/${id}`, body);
+    reload();
+  };
+  const setStatus = async (id, status) => {
+    await put(`/sos/${id}/status`, { status });
+    loadSos();
+  };
 
   return (
     <>
@@ -251,12 +334,23 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
       {sos.length === 0 && <p>{t.noIncidents}</p>}
       {sos.map((s) => (
         <div key={s.id} style={{ border: "2px solid #dc2626", borderRadius: 8, padding: 12, marginBottom: 12 }}>
-          <b>#{s.id} {t.cat[s.category] || s.category}</b> — {t.loc[s.location] || s.location} ({s.time})
-          {s.lat && <div>GPS: {s.lat.toFixed(5)}, {s.lng.toFixed(5)}</div>}
+          <b>
+            #{s.id} {t.cat[s.category] || s.category}
+          </b>{" "}
+          — {t.loc[s.location] || s.location} ({s.time})
+          {s.lat && (
+            <div>
+              GPS: {s.lat.toFixed(5)}, {s.lng.toFixed(5)}
+            </div>
+          )}
           <div style={{ marginTop: 6 }}>
             {t.status}:{" "}
             <select value={s.status} onChange={(e) => setStatus(s.id, e.target.value)}>
-              {STATUSES.map((x) => <option key={x} value={x}>{t.sosStatus[x]}</option>)}
+              {STATUSES.map((x) => (
+                <option key={x} value={x}>
+                  {t.sosStatus[x]}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -267,7 +361,11 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
         <div key={r.id} style={{ border: "1px solid #999", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <b>{t.roads[r.id] || r.name}</b>{" "}
           <select value={r.level} onChange={(e) => updateRoad(r.id, { level: e.target.value })}>
-            {LEVELS.map((x) => <option key={x} value={x}>{t.level[x]}</option>)}
+            {LEVELS.map((x) => (
+              <option key={x} value={x}>
+                {t.level[x]}
+              </option>
+            ))}
           </select>{" "}
           <label>
             <input type="checkbox" checked={r.closed} onChange={(e) => updateRoad(r.id, { closed: e.target.checked })} /> {t.closed}
@@ -279,9 +377,17 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
       {shuttles.map((s) => (
         <div key={s.id} style={{ border: "1px solid #999", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <h3>{tr(t, s.name)}</h3>
-          <p>{t.waiting}: {s.waiting} | {t.demand}: <b style={{ color: dcolor[s.demand] }}>{t.demandL[s.demand]}</b></p>
-          <input type="range" min="0" max="300" value={s.waiting}
-            onChange={(e) => updateShuttle(s.id, { waiting: Number(e.target.value) })} style={{ width: "100%" }} />
+          <p>
+            {t.waiting}: {s.waiting} | {t.demand}: <b style={{ color: dcolor[s.demand] }}>{t.demandL[s.demand]}</b>
+          </p>
+          <input
+            type="range"
+            min="0"
+            max="300"
+            value={s.waiting}
+            onChange={(e) => updateShuttle(s.id, { waiting: Number(e.target.value) })}
+            style={{ width: "100%" }}
+          />
           <p style={{ background: "#fef9c3", padding: 8, borderRadius: 6 }}>💡 {shuttleNote(t, s)}</p>
           <div>
             {t.runningShuttles}: <b>{s.running}</b>{" "}
@@ -291,7 +397,11 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
           <div style={{ marginTop: 6 }}>
             {t.status}:{" "}
             <select value={s.status} onChange={(e) => updateShuttle(s.id, { status: e.target.value })}>
-              {SHUTTLE_STATUSES.map((x) => <option key={x} value={x}>{t.shStatus[x]}</option>)}
+              {SHUTTLE_STATUSES.map((x) => (
+                <option key={x} value={x}>
+                  {t.shStatus[x]}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -300,9 +410,17 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
       <h2>{t.adminParking}</h2>
       {parking.map((p) => (
         <div key={p.id} style={{ border: "1px solid #999", borderRadius: 8, padding: 12, marginBottom: 12 }}>
-          <h3>{tr(t, p.name)}: {p.occupied} / {p.capacity}</h3>
-          <input type="range" min="0" max={p.capacity} value={p.occupied}
-            onChange={(e) => updateParking(p.id, e.target.value)} style={{ width: "100%" }} />
+          <h3>
+            {tr(t, p.name)}: {p.occupied} / {p.capacity}
+          </h3>
+          <input
+            type="range"
+            min="0"
+            max={p.capacity}
+            value={p.occupied}
+            onChange={(e) => updateParking(p.id, e.target.value)}
+            style={{ width: "100%" }}
+          />
         </div>
       ))}
     </>
@@ -311,19 +429,28 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
 
 export default function App() {
   const [lang, setLang] = useState(() => {
-    try { return localStorage.getItem("lang") || "en"; } catch { return "en"; }
+    try {
+      return localStorage.getItem("lang") || "en";
+    } catch {
+      return "en";
+    }
   });
   const [parking, setParking] = useState([]);
   const [best, setBest] = useState(null);
   const [shuttles, setShuttles] = useState([]);
   const [traffic, setTraffic] = useState([]);
   const [route, setRoute] = useState(null);
+  const [journey, setJourney] = useState(null);
   const [view, setView] = useState("pilgrim");
   const t = T[lang];
 
   const changeLang = (l) => {
     setLang(l);
-    try { localStorage.setItem("lang", l); } catch { /* ignore */ }
+    try {
+      localStorage.setItem("lang", l);
+    } catch {
+      /* ignore */
+    }
   };
 
   const load = async () => {
@@ -333,7 +460,10 @@ export default function App() {
       setShuttles(await fetch(`${API}/shuttle`).then((r) => r.json()));
       setTraffic((await fetch(`${API}/traffic`).then((r) => r.json())).roads);
       setRoute(await fetch(`${API}/traffic/route`).then((r) => r.json()));
-    } catch { /* ignore */ }
+      setJourney(await fetch(`${API}/journey`).then((r) => r.json()));
+    } catch {
+      /* ignore */
+    }
   };
 
   useEffect(() => {
@@ -345,20 +475,33 @@ export default function App() {
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: 20, fontFamily: "sans-serif", textAlign: "left" }}>
       <div style={{ textAlign: "right", marginBottom: 8 }}>
-        {[["en", "English"], ["te", "తెలుగు"], ["hi", "हिन्दी"]].map(([k, label]) => (
-          <button key={k} onClick={() => changeLang(k)}
-            style={{ marginLeft: 6, fontWeight: lang === k ? "bold" : "normal", background: lang === k ? "#dbeafe" : undefined }}>
+        {[
+          ["en", "English"],
+          ["te", "తెలుగు"],
+          ["hi", "हिन्दी"],
+        ].map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => changeLang(k)}
+            style={{ marginLeft: 6, fontWeight: lang === k ? "bold" : "normal", background: lang === k ? "#dbeafe" : undefined }}
+          >
             {label}
           </button>
         ))}
       </div>
       <h1 style={{ fontSize: 28 }}>🚗 {t.title}</h1>
       <div style={{ marginBottom: 16 }}>
-        <button onClick={() => setView("pilgrim")} style={{ marginRight: 8 }}>{t.pilgrim}</button>
-        <button onClick={() => setView("sos")} style={{ marginRight: 8 }}>🆘 {t.sos}</button>
+        <button onClick={() => setView("pilgrim")} style={{ marginRight: 8 }}>
+          {t.pilgrim}
+        </button>
+        <button onClick={() => setView("sos")} style={{ marginRight: 8 }}>
+          🆘 {t.sos}
+        </button>
         <button onClick={() => setView("admin")}>{t.admin}</button>
       </div>
-      {view === "pilgrim" && <Pilgrim t={t} parking={parking} best={best} shuttles={shuttles} traffic={traffic} route={route} />}
+      {view === "pilgrim" && (
+        <Pilgrim t={t} parking={parking} best={best} shuttles={shuttles} traffic={traffic} route={route} journey={journey} />
+      )}
       {view === "sos" && <SOS t={t} />}
       {view === "admin" && <Admin t={t} parking={parking} shuttles={shuttles} traffic={traffic} reload={load} />}
     </div>
