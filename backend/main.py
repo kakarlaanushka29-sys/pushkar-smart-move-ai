@@ -151,3 +151,45 @@ def update_shuttle(route_id: int, data: ShuttleUpdate):
                 r["status"] = data.status
             return shuttle_view(r)
     raise HTTPException(status_code=404, detail="Route not found")
+roads = [
+    {"id": 1, "name": "Main Road to Ghat A", "level": "HIGH", "closed": False, "time_min": 25},
+    {"id": 2, "name": "Bypass Road via Parking B", "level": "MODERATE", "closed": False, "time_min": 18},
+    {"id": 3, "name": "Riverside Road", "level": "LOW", "closed": False, "time_min": 22},
+]
+
+class RoadUpdate(BaseModel):
+    level: Optional[str] = None
+    closed: Optional[bool] = None
+    time_min: Optional[int] = None
+
+LEVELS = ["LOW", "MODERATE", "HIGH"]
+
+@app.get("/traffic")
+def get_traffic():
+    return {"simulated": True, "roads": roads}
+
+@app.put("/traffic/{road_id}")
+def update_road(road_id: int, data: RoadUpdate):
+    for r in roads:
+        if r["id"] == road_id:
+            if data.level is not None:
+                if data.level not in LEVELS:
+                    raise HTTPException(status_code=400, detail="Invalid level")
+                r["level"] = data.level
+            if data.closed is not None:
+                r["closed"] = data.closed
+            if data.time_min is not None:
+                if data.time_min < 0:
+                    raise HTTPException(status_code=400, detail="Invalid time")
+                r["time_min"] = data.time_min
+            return r
+    raise HTTPException(status_code=404, detail="Road not found")
+
+@app.get("/traffic/route")
+def best_route():
+    rank = {"LOW": 0, "MODERATE": 1, "HIGH": 2}
+    open_roads = [r for r in roads if not r["closed"]]
+    if not open_roads:
+        return {"message": "All routes closed"}
+    best = min(open_roads, key=lambda r: (r["time_min"] + rank[r["level"]] * 5))
+    return {"simulated": True, "recommended": best}
