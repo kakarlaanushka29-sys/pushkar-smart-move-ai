@@ -225,3 +225,40 @@ def journey():
         "est_wait_min": wait_min,
         "ghat": "Ghat A",
     }
+crowd_zones = [
+    {"id": 1, "name": "Ghat A", "level": "NORMAL", "alt": "Ghat B", "approved": False},
+    {"id": 2, "name": "Ghat B", "level": "NORMAL", "alt": "Ghat A", "approved": False},
+    {"id": 3, "name": "Entry Gate C", "level": "NORMAL", "alt": "Ghat B", "approved": False},
+]
+
+CROWD_LEVELS = ["NORMAL", "INCREASING", "CRITICAL"]
+
+class CrowdUpdate(BaseModel):
+    level: Optional[str] = None
+    approved: Optional[bool] = None
+
+def crowd_view(z):
+    alt = next(x for x in crowd_zones if x["name"] == z["alt"])
+    suggested = z["level"] == "CRITICAL" and alt["level"] != "CRITICAL"
+    return {**z, "diversion_suggested": suggested, "alt_level": alt["level"]}
+
+@app.get("/crowd")
+def get_crowd():
+    return {"manual_input": True, "zones": [crowd_view(z) for z in crowd_zones]}
+
+@app.put("/crowd/{zone_id}")
+def update_crowd(zone_id: int, data: CrowdUpdate):
+    for z in crowd_zones:
+        if z["id"] == zone_id:
+            if data.level is not None:
+                if data.level not in CROWD_LEVELS:
+                    raise HTTPException(status_code=400, detail="Invalid level")
+                if data.level != z["level"]:
+                    z["approved"] = False  # old approval cancelled
+                z["level"] = data.level
+            if data.approved is not None:
+                if data.approved and not crowd_view(z)["diversion_suggested"]:
+                    raise HTTPException(status_code=400, detail="No valid diversion to approve")
+                z["approved"] = data.approved
+            return crowd_view(z)
+    raise HTTPException(status_code=404, detail="Zone not found")

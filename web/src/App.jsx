@@ -4,7 +4,9 @@ const API = "http://127.0.0.1:8000";
 const color = { AVAILABLE: "#22c55e", FILLING: "#eab308", FULL_RISK: "#ef4444" };
 const dcolor = { LOW: "#22c55e", MEDIUM: "#eab308", HIGH: "#ef4444" };
 const tcolor = { LOW: "#22c55e", MODERATE: "#eab308", HIGH: "#ef4444" };
+const ccolor = { NORMAL: "#22c55e", INCREASING: "#eab308", CRITICAL: "#ef4444" };
 const LEVELS = ["LOW", "MODERATE", "HIGH"];
+const CLEVELS = ["NORMAL", "INCREASING", "CRITICAL"];
 const STATUSES = ["Reported", "Acknowledged", "Team Assigned", "Help Arrived", "Resolved"];
 const CATEGORIES = ["Accident", "Injured pilgrim", "Medical emergency", "Missing person", "Crowd emergency", "Other"];
 const LOCATIONS = ["Ghat A", "Ghat B", "Entry Gate C", "Parking A", "Parking B"];
@@ -16,6 +18,13 @@ const T = {
     title: "Pushkar Smart Move AI", pilgrim: "Pilgrim View", sos: "SOS", admin: "Admin View",
     journey: "Journey Plan", step1: "Drive via", step2: "Park at", step3: "Take shuttle", step4: "Walk to",
     est: "Estimated shuttle wait", noJourney: "No journey available right now.",
+    crowd: "Crowd Status", crowdAdmin: "Admin: Crowd Zones (manual input)",
+    approve: "Approve diversion (staff verified)", withdraw: "Withdraw diversion",
+    divSuggest: "Suggested diversion to {to}. Verify on site before approving.",
+    divMsg: "Staff-approved: {from} is crowded. Please go to {to}.",
+    divBlocked: "Alternative zone is also critical. No diversion suggested.",
+    crowdL: { NORMAL: "NORMAL", INCREASING: "INCREASING", CRITICAL: "CRITICAL" },
+    crowdAct: { NORMAL: "Continue monitoring", INCREASING: "Staff alert", CRITICAL: "Immediate safety assessment" },
     traffic: "Traffic (simulated data)", closed: "CLOSED", min: "min", trafficWord: "traffic",
     recRoute: "Recommended route", parkingStatus: "Parking Status", parking: "Parking", ghat: "Ghat",
     available: "Available", full: "full", recommended: "Recommended", spacesFree: "spaces free",
@@ -44,6 +53,13 @@ const T = {
     title: "పుష్కర్ స్మార్ట్ మూవ్ AI", pilgrim: "యాత్రికుల వీక్షణ", sos: "SOS", admin: "అడ్మిన్ వీక్షణ",
     journey: "ప్రయాణ ప్రణాళిక", step1: "ఈ మార్గంలో వెళ్లండి", step2: "ఇక్కడ పార్క్ చేయండి", step3: "షటిల్ ఎక్కండి", step4: "నడిచి వెళ్లండి",
     est: "షటిల్ కోసం అంచనా వేచి ఉండే సమయం", noJourney: "ప్రస్తుతం ప్రయాణ ప్రణాళిక అందుబాటులో లేదు.",
+    crowd: "జన సమూహ స్థితి", crowdAdmin: "అడ్మిన్: జన సమూహ ప్రాంతాలు (మాన్యువల్)",
+    approve: "మళ్లింపు ఆమోదించండి (సిబ్బంది ధృవీకరణ)", withdraw: "మళ్లింపు ఉపసంహరించండి",
+    divSuggest: "{to} కు మళ్లింపు సూచన. ఆమోదించే ముందు స్థలంలో ధృవీకరించండి.",
+    divMsg: "సిబ్బంది ఆమోదించారు: {from} లో రద్దీ ఎక్కువగా ఉంది. దయచేసి {to} కు వెళ్లండి.",
+    divBlocked: "ప్రత్యామ్నాయ ప్రాంతం కూడా తీవ్రంగా ఉంది. మళ్లింపు సూచన లేదు.",
+    crowdL: { NORMAL: "సాధారణం", INCREASING: "పెరుగుతోంది", CRITICAL: "తీవ్రం" },
+    crowdAct: { NORMAL: "పర్యవేక్షణ కొనసాగించండి", INCREASING: "సిబ్బందికి హెచ్చరిక", CRITICAL: "వెంటనే భద్రతా పరిశీలన" },
     traffic: "ట్రాఫిక్ (సిమ్యులేటెడ్ డేటా)", closed: "మూసివేయబడింది", min: "నిమిషాలు", trafficWord: "ట్రాఫిక్",
     recRoute: "సిఫార్సు చేసిన మార్గం", parkingStatus: "పార్కింగ్ స్థితి", parking: "పార్కింగ్", ghat: "ఘాట్",
     available: "ఖాళీ", full: "నిండింది", recommended: "సిఫార్సు", spacesFree: "ఖాళీ స్థలాలు",
@@ -72,6 +88,13 @@ const T = {
     title: "पुष्कर स्मार्ट मूव AI", pilgrim: "यात्री दृश्य", sos: "SOS", admin: "एडमिन दृश्य",
     journey: "यात्रा योजना", step1: "इस मार्ग से जाएं", step2: "यहां पार्क करें", step3: "शटल लें", step4: "पैदल जाएं",
     est: "शटल का अनुमानित इंतजार", noJourney: "अभी कोई यात्रा योजना उपलब्ध नहीं है।",
+    crowd: "भीड़ की स्थिति", crowdAdmin: "एडमिन: भीड़ क्षेत्र (मैन्युअल)",
+    approve: "डायवर्जन मंजूर करें (स्टाफ सत्यापित)", withdraw: "डायवर्जन वापस लें",
+    divSuggest: "{to} की ओर डायवर्जन का सुझाव। मंजूरी से पहले मौके पर सत्यापित करें।",
+    divMsg: "स्टाफ द्वारा मंजूर: {from} में भीड़ है। कृपया {to} जाएं।",
+    divBlocked: "वैकल्पिक क्षेत्र भी गंभीर है। डायवर्जन का सुझाव नहीं।",
+    crowdL: { NORMAL: "सामान्य", INCREASING: "बढ़ रही है", CRITICAL: "गंभीर" },
+    crowdAct: { NORMAL: "निगरानी जारी रखें", INCREASING: "स्टाफ अलर्ट", CRITICAL: "तुरंत सुरक्षा आकलन" },
     traffic: "ट्रैफिक (सिमुलेटेड डेटा)", closed: "बंद", min: "मिनट", trafficWord: "ट्रैफिक",
     recRoute: "सुझाया गया मार्ग", parkingStatus: "पार्किंग स्थिति", parking: "पार्किंग", ghat: "घाट",
     available: "उपलब्ध", full: "भरा", recommended: "सुझाव", spacesFree: "स्थान खाली",
@@ -106,6 +129,7 @@ const put = (url, body) =>
   });
 
 const tr = (t, s) => s.replace("Parking", t.parking).replace("Ghat", t.ghat);
+const zn = (t, n) => t.loc[n] || n;
 
 function shuttleNote(t, s) {
   if (s.status === "Disrupted") return t.disrupted;
@@ -113,7 +137,7 @@ function shuttleNote(t, s) {
   return t.enough;
 }
 
-function Pilgrim({ t, parking, best, shuttles, traffic, route, journey }) {
+function Pilgrim({ t, parking, best, shuttles, traffic, route, journey, crowd }) {
   return (
     <>
       <h2>🧭 {t.journey}</h2>
@@ -141,6 +165,18 @@ function Pilgrim({ t, parking, best, shuttles, traffic, route, journey }) {
       ) : (
         <p>{t.noJourney}</p>
       )}
+
+      <h2>👥 {t.crowd}</h2>
+      {crowd.map((z) => (
+        <div key={z.id} style={{ border: `3px solid ${ccolor[z.level]}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+          <b>{zn(t, z.name)}</b>: <b style={{ color: ccolor[z.level] }}>{t.crowdL[z.level]}</b>
+          {z.approved && (
+            <p style={{ background: "#ffedd5", padding: 8, borderRadius: 6, marginBottom: 0 }}>
+              ⚠️ {t.divMsg.replace("{from}", zn(t, z.name)).replace("{to}", zn(t, z.alt))}
+            </p>
+          )}
+        </div>
+      ))}
 
       <h2>🚦 {t.traffic}</h2>
       {traffic.map((r) => (
@@ -294,7 +330,7 @@ function SOS({ t }) {
   );
 }
 
-function Admin({ t, parking, shuttles, traffic, reload }) {
+function Admin({ t, parking, shuttles, traffic, crowd, reload }) {
   const [sos, setSos] = useState([]);
 
   const loadSos = async () => {
@@ -321,6 +357,10 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
   };
   const updateRoad = async (id, body) => {
     await put(`/traffic/${id}`, body);
+    reload();
+  };
+  const updateCrowd = async (id, body) => {
+    await put(`/crowd/${id}`, body);
     reload();
   };
   const setStatus = async (id, status) => {
@@ -353,6 +393,33 @@ function Admin({ t, parking, shuttles, traffic, reload }) {
               ))}
             </select>
           </div>
+        </div>
+      ))}
+
+      <h2>👥 {t.crowdAdmin}</h2>
+      {crowd.map((z) => (
+        <div key={z.id} style={{ border: `2px solid ${ccolor[z.level]}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+          <b>{zn(t, z.name)}</b>{" "}
+          <select value={z.level} onChange={(e) => updateCrowd(z.id, { level: e.target.value })}>
+            {CLEVELS.map((x) => (
+              <option key={x} value={x}>
+                {t.crowdL[x]}
+              </option>
+            ))}
+          </select>
+          <p>📋 {t.crowdAct[z.level]}</p>
+          {z.diversion_suggested && (
+            <p style={{ background: "#fef9c3", padding: 8, borderRadius: 6 }}>
+              💡 {t.divSuggest.replace("{to}", zn(t, z.alt))}
+            </p>
+          )}
+          {z.level === "CRITICAL" && !z.diversion_suggested && (
+            <p style={{ background: "#fee2e2", padding: 8, borderRadius: 6 }}>⚠️ {t.divBlocked}</p>
+          )}
+          {z.diversion_suggested && !z.approved && (
+            <button onClick={() => updateCrowd(z.id, { approved: true })}>✅ {t.approve}</button>
+          )}
+          {z.approved && <button onClick={() => updateCrowd(z.id, { approved: false })}>↩️ {t.withdraw}</button>}
         </div>
       ))}
 
@@ -441,6 +508,7 @@ export default function App() {
   const [traffic, setTraffic] = useState([]);
   const [route, setRoute] = useState(null);
   const [journey, setJourney] = useState(null);
+  const [crowd, setCrowd] = useState([]);
   const [view, setView] = useState("pilgrim");
   const t = T[lang];
 
@@ -461,6 +529,7 @@ export default function App() {
       setTraffic((await fetch(`${API}/traffic`).then((r) => r.json())).roads);
       setRoute(await fetch(`${API}/traffic/route`).then((r) => r.json()));
       setJourney(await fetch(`${API}/journey`).then((r) => r.json()));
+      setCrowd((await fetch(`${API}/crowd`).then((r) => r.json())).zones);
     } catch {
       /* ignore */
     }
@@ -500,10 +569,21 @@ export default function App() {
         <button onClick={() => setView("admin")}>{t.admin}</button>
       </div>
       {view === "pilgrim" && (
-        <Pilgrim t={t} parking={parking} best={best} shuttles={shuttles} traffic={traffic} route={route} journey={journey} />
+        <Pilgrim
+          t={t}
+          parking={parking}
+          best={best}
+          shuttles={shuttles}
+          traffic={traffic}
+          route={route}
+          journey={journey}
+          crowd={crowd}
+        />
       )}
       {view === "sos" && <SOS t={t} />}
-      {view === "admin" && <Admin t={t} parking={parking} shuttles={shuttles} traffic={traffic} reload={load} />}
+      {view === "admin" && (
+        <Admin t={t} parking={parking} shuttles={shuttles} traffic={traffic} crowd={crowd} reload={load} />
+      )}
     </div>
   );
 }
