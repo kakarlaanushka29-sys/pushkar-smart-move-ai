@@ -16,6 +16,10 @@ const SHUTTLE_STATUSES = ["Running", "Delayed", "Disrupted"];
 const T = {
   en: {
     title: "Pushkar Smart Move AI", pilgrim: "Pilgrim View", sos: "SOS", admin: "Admin View",
+    pinTitle: "Admin Login", pinPrompt: "Enter admin PIN", pinUnlock: "Unlock", pinLock: "Lock admin",
+    pinWrong: "Wrong PIN. Try again.", pinNet: "Server not reachable. Start the backend.",
+    pinNote: "Prototype PIN only. Production will use role-based login.",
+    resetDemo: "Reset demo data", resetConfirm: "Reset all demo data? SOS reports will be cleared.",
     journey: "Journey Plan", step1: "Drive via", step2: "Park at", step3: "Take shuttle", step4: "Walk to",
     est: "Estimated shuttle wait", noJourney: "No journey available right now.",
     crowd: "Crowd Status", crowdAdmin: "Admin: Crowd Zones (manual input)",
@@ -51,6 +55,10 @@ const T = {
   },
   te: {
     title: "పుష్కర్ స్మార్ట్ మూవ్ AI", pilgrim: "యాత్రికుల వీక్షణ", sos: "SOS", admin: "అడ్మిన్ వీక్షణ",
+    pinTitle: "అడ్మిన్ లాగిన్", pinPrompt: "అడ్మిన్ PIN నమోదు చేయండి", pinUnlock: "అన్‌లాక్", pinLock: "అడ్మిన్ లాక్ చేయండి",
+    pinWrong: "తప్పు PIN. మళ్లీ ప్రయత్నించండి.", pinNet: "సర్వర్ అందుబాటులో లేదు. బ్యాకెండ్ ప్రారంభించండి.",
+    pinNote: "ఇది ప్రోటోటైప్ PIN మాత్రమే. అసలు వ్యవస్థలో రోల్-ఆధారిత లాగిన్ ఉంటుంది.",
+    resetDemo: "డెమో డేటా రీసెట్ చేయండి", resetConfirm: "మొత్తం డెమో డేటాను రీసెట్ చేయాలా? SOS రిపోర్ట్‌లు తొలగించబడతాయి.",
     journey: "ప్రయాణ ప్రణాళిక", step1: "ఈ మార్గంలో వెళ్లండి", step2: "ఇక్కడ పార్క్ చేయండి", step3: "షటిల్ ఎక్కండి", step4: "నడిచి వెళ్లండి",
     est: "షటిల్ కోసం అంచనా వేచి ఉండే సమయం", noJourney: "ప్రస్తుతం ప్రయాణ ప్రణాళిక అందుబాటులో లేదు.",
     crowd: "జన సమూహ స్థితి", crowdAdmin: "అడ్మిన్: జన సమూహ ప్రాంతాలు (మాన్యువల్)",
@@ -86,6 +94,10 @@ const T = {
   },
   hi: {
     title: "पुष्कर स्मार्ट मूव AI", pilgrim: "यात्री दृश्य", sos: "SOS", admin: "एडमिन दृश्य",
+    pinTitle: "एडमिन लॉगिन", pinPrompt: "एडमिन PIN दर्ज करें", pinUnlock: "अनलॉक", pinLock: "एडमिन लॉक करें",
+    pinWrong: "गलत PIN। फिर से प्रयास करें।", pinNet: "सर्वर उपलब्ध नहीं है। बैकएंड शुरू करें।",
+    pinNote: "यह केवल प्रोटोटाइप PIN है। वास्तविक प्रणाली में भूमिका-आधारित लॉगिन होगा।",
+    resetDemo: "डेमो डेटा रीसेट करें", resetConfirm: "सारा डेमो डेटा रीसेट करें? SOS रिपोर्ट हटा दी जाएंगी।",
     journey: "यात्रा योजना", step1: "इस मार्ग से जाएं", step2: "यहां पार्क करें", step3: "शटल लें", step4: "पैदल जाएं",
     est: "शटल का अनुमानित इंतजार", noJourney: "अभी कोई यात्रा योजना उपलब्ध नहीं है।",
     crowd: "भीड़ की स्थिति", crowdAdmin: "एडमिन: भीड़ क्षेत्र (मैन्युअल)",
@@ -120,13 +132,6 @@ const T = {
     roads: { 1: "घाट A का मुख्य मार्ग", 2: "पार्किंग B से बाईपास रोड", 3: "नदी किनारे की सड़क" },
   },
 };
-
-const put = (url, body) =>
-  fetch(`${API}${url}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
 
 const tr = (t, s) => s.replace("Parking", t.parking).replace("Ghat", t.ghat);
 const zn = (t, n) => t.loc[n] || n;
@@ -242,7 +247,14 @@ function SOS({ t }) {
     if (!myId) return;
     const timer = setInterval(async () => {
       try {
-        setMyReport(await fetch(`${API}/sos/${myId}`).then((x) => x.json()));
+        const res = await fetch(`${API}/sos/${myId}`);
+        if (res.ok) {
+          setMyReport(await res.json());
+        } else {
+          // report no longer exists (for example after demo reset)
+          setMyReport(null);
+          setMyId(null);
+        }
       } catch {
         /* ignore */
       }
@@ -330,12 +342,61 @@ function SOS({ t }) {
   );
 }
 
-function Admin({ t, parking, shuttles, traffic, crowd, reload }) {
+function PinGate({ t, onUnlock }) {
+  const [value, setValue] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const submit = async () => {
+    try {
+      const res = await fetch(`${API}/admin/check`, { headers: { "X-Admin-Pin": value } });
+      if (res.ok) {
+        onUnlock(value);
+      } else {
+        setMsg("❌ " + t.pinWrong);
+      }
+    } catch {
+      setMsg("❌ " + t.pinNet);
+    }
+  };
+
+  return (
+    <div style={{ border: "2px solid #2563eb", borderRadius: 8, padding: 16 }}>
+      <h2>🔐 {t.pinTitle}</h2>
+      <p>{t.pinPrompt}</p>
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+        style={{ width: "100%", padding: 10, fontSize: 18, marginBottom: 10, boxSizing: "border-box" }}
+      />
+      <button onClick={submit} style={{ padding: "10px 16px", fontWeight: "bold" }}>
+        {t.pinUnlock}
+      </button>
+      {msg && <p>{msg}</p>}
+      <small>{t.pinNote}</small>
+    </div>
+  );
+}
+
+function Admin({ t, parking, shuttles, traffic, crowd, reload, pin, onLock }) {
   const [sos, setSos] = useState([]);
+
+  // Every admin call sends the PIN header. If server says 401, lock the admin screen.
+  const api = async (url, method, body) => {
+    const res = await fetch(`${API}${url}`, {
+      method,
+      headers: { "Content-Type": "application/json", "X-Admin-Pin": pin },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 401) onLock();
+    return res;
+  };
 
   const loadSos = async () => {
     try {
-      setSos(await fetch(`${API}/sos`).then((r) => r.json()));
+      const res = await api("/sos", "GET");
+      if (res.ok) setSos(await res.json());
     } catch {
       /* ignore */
     }
@@ -347,29 +408,52 @@ function Admin({ t, parking, shuttles, traffic, crowd, reload }) {
     return () => clearInterval(timer);
   }, []);
 
+  const resetDemo = async () => {
+    if (!window.confirm(t.resetConfirm)) return;
+    try {
+      await api("/reset", "POST");
+    } catch {
+      /* ignore */
+    }
+    setSos([]);
+    reload();
+  };
+
   const updateParking = async (id, occupied) => {
-    await put(`/parking/${id}`, { occupied: Number(occupied) });
+    await api(`/parking/${id}`, "PUT", { occupied: Number(occupied) });
     reload();
   };
   const updateShuttle = async (id, body) => {
-    await put(`/shuttle/${id}`, body);
+    await api(`/shuttle/${id}`, "PUT", body);
     reload();
   };
   const updateRoad = async (id, body) => {
-    await put(`/traffic/${id}`, body);
+    await api(`/traffic/${id}`, "PUT", body);
     reload();
   };
   const updateCrowd = async (id, body) => {
-    await put(`/crowd/${id}`, body);
+    await api(`/crowd/${id}`, "PUT", body);
     reload();
   };
   const setStatus = async (id, status) => {
-    await put(`/sos/${id}/status`, { status });
+    await api(`/sos/${id}/status`, "PUT", { status });
     loadSos();
   };
 
   return (
     <>
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={resetDemo}
+          style={{ marginRight: 8, padding: "8px 12px", background: "#fee2e2", border: "1px solid #dc2626", borderRadius: 6, fontWeight: "bold" }}
+        >
+          🔄 {t.resetDemo}
+        </button>
+        <button onClick={onLock} style={{ padding: "8px 12px", borderRadius: 6 }}>
+          🔒 {t.pinLock}
+        </button>
+      </div>
+
       <h2>🚨 {t.incidents}</h2>
       {sos.length === 0 && <p>{t.noIncidents}</p>}
       {sos.map((s) => (
@@ -502,6 +586,13 @@ export default function App() {
       return "en";
     }
   });
+  const [pin, setPin] = useState(() => {
+    try {
+      return sessionStorage.getItem("adminPin") || "";
+    } catch {
+      return "";
+    }
+  });
   const [parking, setParking] = useState([]);
   const [best, setBest] = useState(null);
   const [shuttles, setShuttles] = useState([]);
@@ -516,6 +607,24 @@ export default function App() {
     setLang(l);
     try {
       localStorage.setItem("lang", l);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const unlock = (p) => {
+    setPin(p);
+    try {
+      sessionStorage.setItem("adminPin", p);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const lock = () => {
+    setPin("");
+    try {
+      sessionStorage.removeItem("adminPin");
     } catch {
       /* ignore */
     }
@@ -581,9 +690,21 @@ export default function App() {
         />
       )}
       {view === "sos" && <SOS t={t} />}
-      {view === "admin" && (
-        <Admin t={t} parking={parking} shuttles={shuttles} traffic={traffic} crowd={crowd} reload={load} />
-      )}
+      {view === "admin" &&
+        (pin ? (
+          <Admin
+            t={t}
+            parking={parking}
+            shuttles={shuttles}
+            traffic={traffic}
+            crowd={crowd}
+            reload={load}
+            pin={pin}
+            onLock={lock}
+          />
+        ) : (
+          <PinGate t={t} onUnlock={unlock} />
+        ))}
     </div>
   );
 }

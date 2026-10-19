@@ -262,3 +262,54 @@ def update_crowd(zone_id: int, data: CrowdUpdate):
                 z["approved"] = data.approved
             return crowd_view(z)
     raise HTTPException(status_code=404, detail="Zone not found")
+import copy
+
+# Server start ayinappudu unna seed values ni save chesukuntundi
+SEED = {
+    "parking": copy.deepcopy(parking),
+    "shuttle": copy.deepcopy(shuttle_routes),
+    "roads": copy.deepcopy(roads),
+    "crowd": copy.deepcopy(crowd_zones),
+}
+
+@app.post("/reset")
+def reset_demo():
+    parking[:] = copy.deepcopy(SEED["parking"])
+    shuttle_routes[:] = copy.deepcopy(SEED["shuttle"])
+    roads[:] = copy.deepcopy(SEED["roads"])
+    crowd_zones[:] = copy.deepcopy(SEED["crowd"])
+    sos_reports.clear()
+    return {"message": "Demo data reset"}
+import os
+import hmac
+from fastapi import Request # type: ignore
+from fastapi.responses import JSONResponse # type: ignore
+
+# Prototype PIN. Maarchali ante terminal lo: $env:ADMIN_PIN="1234" (server start mundu)
+ADMIN_PIN = os.environ.get("ADMIN_PIN", "2027")
+
+def needs_pin(method: str, path: str) -> bool:
+    path = path.rstrip("/") or "/"
+    if method == "PUT":
+        return True
+    if method == "GET" and path in ("/sos", "/admin/check"):
+        return True
+    if method == "POST" and path == "/reset":
+        return True
+    return False
+
+@app.middleware("http")
+async def admin_guard(request: Request, call_next):
+    if needs_pin(request.method, request.url.path):
+        sent = request.headers.get("x-admin-pin", "")
+        if not hmac.compare_digest(sent.encode(), ADMIN_PIN.encode()):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing admin PIN"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")},
+            )
+    return await call_next(request)
+
+@app.get("/admin/check")
+def admin_check():
+    return {"ok": True}
